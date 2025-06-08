@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Sign In &ndash; E-paper Controller</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #eaeaea; }
+    .login-box {
+      max-width: 370px;
+      margin: 60px auto;
+      padding: 36px 28px 28px;
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 4px 40px #0002;
+      text-align: center;
+    }
+    .login-box h2 { margin-bottom: 18px; }
+    .form-control { margin-bottom: 14px; }
+    .logo-emoji { font-size: 48px; margin-bottom: 14px; }
+    .footer { margin-top: 28px; color: #aaa; font-size: 0.95em; }
+  </style>
+</head>
+<body>
+  <div class="login-box">
+    <div class="logo-emoji">🖥️</div>
+    <h2>Sign in to<br>E-paper Controller</h2>
+    {% if error %}
+      <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, msg in messages %}
+        <div class="alert alert-{{'danger' if category=='danger' else 'success'}}">{{ msg|safe }}</div>
+      {% endfor %}
+    {% endif %}
+    {% endwith %}
+    <form method="post" autocomplete="off">
+      <input type="password" name="password" class="form-control" placeholder="Enter password" required autofocus>
+      <button class="btn btn-primary w-100" type="submit">Sign in</button>
+      <input type="hidden" name="next" value="{{ next }}">
+    </form>
+    <div class="footer">
+      <span style="opacity:0.8;">&copy; {{ 2025 }} E-paper Pi</span>
+    </div>
+  </div>
+</body>
+</html>

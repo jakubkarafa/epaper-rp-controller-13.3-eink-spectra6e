@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <title>E-paper Controller</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/dropzone@6.0.0-beta.1/dist/dropzone.min.css">
+  <style>
+    body { background: #f5f7fa; }
+    .container { max-width: 700px; margin-top: 32px; background: white; border-radius: 14px; padding: 32px; box-shadow: 0 2px 16px #0001; }
+    .nav-tabs .nav-link.active { font-weight: bold; }
+    .preview-img { max-width:100%; border: 1px solid #ccc; margin: 10px 0; border-radius:6px;}
+    .desc { font-size: 0.99em; color: #666; margin-bottom: 10px; }
+    .tab-pane { margin-top: 16px; }
+    .dz-message { color: #888; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2 class="mb-4" style="text-align:center">13.3" E-paper Controller (RPi Zero)</h2>
+    <ul class="nav nav-tabs" id="mainTabs" role="tablist">
+      <li class="nav-item">
+        <a class="nav-link {% if tab=='convert' %}active{% endif %}" id="convert-tab" data-bs-toggle="tab" href="#convert" role="tab">Convert & Preview</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if tab=='raw' %}active{% endif %}" id="raw-tab" data-bs-toggle="tab" href="#raw" role="tab">Raw Upload (.bin only)</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if tab=='api' %}active{% endif %}" id="api-tab" data-bs-toggle="tab" href="#api" role="tab">API Info</a>
+      </li>
+      {% if is_admin %}
+      <li class="nav-item ms-auto">
+        <a class="nav-link text-danger" href="{{ url_for('admin_logout') }}">Admin logout</a>
+      </li>
+      {% else %}
+      <li class="nav-item ms-auto">
+        <a class="nav-link" href="{{ url_for('admin_login', next=request.url) }}">Admin login</a>
+      </li>
+      {% endif %}
+      <li class="nav-item ms-2">
+        <a class="nav-link" href="{{ url_for('site_logout') }}">Log out</a>
+      </li>
+    </ul>
+    <div class="tab-content mt-3">
+      <!-- Convert & Preview Tab -->
+      <div class="tab-pane fade {% if tab=='convert' %}show active{% endif %}" id="convert" role="tabpanel">
+        <div class="desc">
+          <b>Normal users:</b> Upload any image (PNG, JPG, etc).<br>
+          <ul>
+            <li>Your image will be resized and converted for best e-paper quality. No editing needed!</li>
+            <li>Choose a color palette (4-color, 6-color, etc).</li>
+            <li>After upload, preview result. If you like it, send to e-paper.</li>
+            <li>That’s it – the software handles all technical details!</li>
+          </ul>
+        </div>
+        <!-- Palette management (admin only) -->
+        {% if is_admin %}
+        <div class="mb-4">
+          <form method="post" action="{{ url_for('upload_palette') }}" enctype="multipart/form-data" class="d-inline-block">
+            <label for="paletteUpload"><b>Upload new palette (.act):</b></label>
+            <input type="file" name="palette" id="paletteUpload" accept=".act" class="form-control d-inline-block" required style="width:auto;display:inline;">
+            <button type="submit" class="btn btn-secondary btn-sm ms-2">Upload</button>
+          </form>
+          <ul class="list-group mt-2">
+            {% for palette in palettes %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              {{ palette }}
+              <a href="{{ url_for('delete_palette', palette=palette) }}" class="btn btn-danger btn-sm" title="Delete" aria-label="Delete">&times;</a>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+        <!-- Palette select (for everyone) -->
+        <div class="mb-3">
+          <label for="palette"><b>Color palette:</b></label>
+          <select name="palette" id="palette" class="form-select" {% if not palettes %}disabled{% endif %}>
+            {% for palette in palettes %}
+              <option value="{{palette}}" {% if palette == selected_palette %}selected{% endif %}>{{palette}}</option>
+            {% endfor %}
+          </select>
+          {% if not palettes %}
+            <small class="text-danger">No palette files (.act) found. Please upload at least one.</small>
+          {% endif %}
+        </div>
+        <!-- Drag-and-drop upload -->
+        <form id="imgDropzone" class="dropzone mb-3" style="border:2px dashed #ddd;">
+          <div class="dz-message">Drop image here or click to select</div>
+        </form>
+        <progress id="uploadProgress" value="0" max="100" style="width:100%;display:none"></progress>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="mt-3">
+            {% for category, msg in messages %}
+              <div class="alert alert-{{'danger' if category=='danger' else 'success'}}">{{ msg|safe }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+        {% endwith %}
+        {% if preview_url %}
+          <div class="mt-3">
+            <h5>Preview:</h5>
+            <img class="preview-img" src="{{preview_url}}">
+            <form method="post" action="{{ url_for('display_post') }}" class="mt-2">
+              <button name="display" value="1" type="submit" class="btn btn-success">Send to e-paper Pi & Display</button>
+              {% if buf_download %}
+              <a href="{{ buf_download }}" class="btn btn-outline-secondary ms-2" title="Download raw buffer">Download .bin</a>
+              {% endif %}
+            </form>
+          </div>
+        {% endif %}
+      </div>
+      <!-- Raw Upload Tab (admin only) -->
+      <div class="tab-pane fade {% if tab=='raw' %}show active{% endif %}" id="raw" role="tabpanel">
+        <div class="desc">
+          <b>Advanced users (Admin only):</b> Upload a raw e-paper buffer file (.bin).<br>
+          <ul>
+            <li>This file should already be packed as required by your e-paper module (2 pixels per byte, correct color indices).</li>
+            <li>Wrong format won’t brick your device, but it may display garbage or wrong colors. Just upload again to fix!</li>
+            <li><b>Only .bin files are accepted here.</b></li>
+          </ul>
+        </div>
+        {% if is_admin %}
+        <form method="post" enctype="multipart/form-data" action="{{ url_for('raw_upload') }}">
+          <div class="mb-3">
+            <label for="bin">Select .bin file:</label>
+            <input type="file" name="bin" id="bin" class="form-control" accept=".bin" required>
+          </div>
+          <button type="submit" class="btn btn-primary" id="rawBtn">Upload & Display</button>
+        </form>
+        {% else %}
+        <div class="alert alert-warning">Admin login required for raw buffer upload.</div>
+        {% endif %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="mt-3">
+            {% for category, msg in messages %}
+              <div class="alert alert-{{'danger' if category=='danger' else 'success'}}">{{ msg|safe }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+        {% endwith %}
+      </div>
+      <!-- API Info Tab -->
+      <div class="tab-pane fade {% if tab=='api' %}show active{% endif %}" id="api" role="tabpanel">
+        <div class="desc">
+          <b>For developers and automation:</b>
+          <ul>
+            <li>POST an image to the API endpoint below and your image will be auto-processed & displayed.</li>
+            <li>No need to resize or quantize yourself!</li>
+            <li><b>API key required: <code>X-API-Key</code> header</b></li>
+          </ul>
+          <div class="mb-2"><b>Endpoint:</b> <code>/api/display</code> (POST)</div>
+          <div class="mb-2"><b>Field:</b> <code>img</code> (image file, any format)</div>
+          <div class="mb-2"><b>Optional:</b> <code>palette</code> (palette file name)</div>
+          <div>
+            <b>Example (curl):</b>
+            <pre>curl -H "X-API-Key: your_api_key" -F "img=@yourfile.jpg" http://&lt;your-pi-ip&gt;:5000/api/display</pre>
+            <b>Example (Python):</b>
+            <pre>
+import requests
+headers = {"X-API-Key": "your_api_key"}
+r = requests.post("http://&lt;your-pi-ip&gt;:5000/api/display", files={"img": open("yourfile.jpg", "rb")}, headers=headers)
+print(r.json())
+            </pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dropzone@6.0.0-beta.1/dist/dropzone-min.js"></script>
+  <script>
+    // Tab persistence
+    document.querySelectorAll('a[data-bs-toggle="tab"]').forEach(tab => {
+      tab.addEventListener("shown.bs.tab", function(e) {
+        let href = e.target.getAttribute("href").replace("#", "");
+        let url = new URL(window.location);
+        url.searchParams.set('tab', href);
+        window.history.replaceState(null, null, url.toString());
+      });
+    });
+
+    // Drag-and-drop upload
+    Dropzone.autoDiscover = false;
+    let dz = new Dropzone("#imgDropzone", {
+      url: "/upload_image",
+      paramName: "file",
+      maxFiles: 1,
+      acceptedFiles: "image/*",
+      addRemoveLinks: false,
+      dictDefaultMessage: "Drop image here or click to select",
+      init: function() {
+        let paletteSel = document.getElementById("palette");
+        this.on("sending", function(file, xhr, formData) {
+          document.getElementById('uploadProgress').style.display = 'block';
+          if (paletteSel) formData.append("palette", paletteSel.value);
+        });
+        this.on("uploadprogress", function(file, progress) {
+          document.getElementById('uploadProgress').value = progress;
+        });
+        this.on("success", function(file, response) {
+          window.location = window.location.pathname + "?tab=convert";
+        });
+        this.on("error", function(file, msg) {
+          alert("Error: " + (typeof msg === "string" ? msg : (msg.error || "Unknown error")));
+        });
+      }
+    });
+  </script>
+</body>
+</html>
