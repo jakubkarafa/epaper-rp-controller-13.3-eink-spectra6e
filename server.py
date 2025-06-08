@@ -247,7 +247,13 @@ def admin_logout():
 def index():
     tab = request.args.get("tab", "convert")
     palettes = list_palettes()
-    selected_palette = palettes[0] if palettes else ""
+    preferred_palette = "6-color.act"
+    if preferred_palette in palettes:
+        selected_palette = preferred_palette
+    elif palettes:
+        selected_palette = palettes[0]
+    else:
+        selected_palette = ""
     preview_url = None
     buf_download = None
 
@@ -268,6 +274,7 @@ def index():
         tab=tab,
         is_admin=session.get("admin_logged", False)
     )
+
 
 @app.route("/convert", methods=["POST"])
 def convert_post():
