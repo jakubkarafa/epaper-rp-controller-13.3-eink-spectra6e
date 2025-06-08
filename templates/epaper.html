@@ -67,7 +67,7 @@
             <small class="text-danger">No palette files (.act) found. Please upload at least one (admin only).</small>
           {% endif %}
         </div>
-        <form id="imgDropzone" class="dropzone mb-3" style="border:2px dashed #ddd;">
+        <form id="imgDropzone" class="dropzone mb-3" action="/upload_image" method="post" enctype="multipart/form-data">
           <div class="dz-message">Drop image here or click to select</div>
         </form>
         <progress id="uploadProgress" value="0" max="100" style="width:100%;display:none"></progress>
@@ -182,9 +182,9 @@ print(r.json())
   <script src="https://cdn.jsdelivr.net/npm/dropzone@6.0.0-beta.1/dist/dropzone-min.js"></script>
   <script>
     // Tab persistence
-    document.querySelectorAll('a[data-bs-toggle=\"tab\"]').forEach(tab => {
-      tab.addEventListener(\"shown.bs.tab\", function(e) {
-        let href = e.target.getAttribute(\"href\").replace(\"#\", \"\");
+    document.querySelectorAll('a[data-bs-toggle="tab"]').forEach(tab => {
+      tab.addEventListener("shown.bs.tab", function(e) {
+        let href = e.target.getAttribute("href").replace("#", "");
         let url = new URL(window.location);
         url.searchParams.set('tab', href);
         window.history.replaceState(null, null, url.toString());
@@ -193,30 +193,33 @@ print(r.json())
 
     // Drag-and-drop upload
     Dropzone.autoDiscover = false;
-    let dz = new Dropzone(\"#imgDropzone\", {
-      url: \"/upload_image\",
-      paramName: \"file\",
+    let dz = new Dropzone("#imgDropzone", {
+      url: "/upload_image",
+      paramName: "file",
       maxFiles: 1,
-      acceptedFiles: \"image/*\",
+      acceptedFiles: "image/*",
       addRemoveLinks: false,
-      dictDefaultMessage: \"Drop image here or click to select\",
+      dictDefaultMessage: "Drop image here or click to select",
       init: function() {
-        let paletteSel = document.getElementById(\"palette\");
-        this.on(\"sending\", function(file, xhr, formData) {
+        let dz = this;
+        let paletteSel = document.getElementById("palette");
+        this.on("sending", function(file, xhr, formData) {
           document.getElementById('uploadProgress').style.display = 'block';
-          if (paletteSel) formData.append(\"palette\", paletteSel.value);
+          if (paletteSel) formData.append("palette", paletteSel.value);
         });
-        this.on(\"uploadprogress\", function(file, progress) {
+        this.on("uploadprogress", function(file, progress) {
           document.getElementById('uploadProgress').value = progress;
         });
-        this.on(\"success\", function(file, response) {
-          window.location = window.location.pathname + \"?tab=convert\";
+        this.on("success", function(file, response) {
+          window.location = window.location.pathname + "?tab=convert"; // reload, don't bother clearing
         });
-        this.on(\"error\", function(file, msg) {
-          alert(\"Error: \" + (typeof msg === \"string\" ? msg : (msg.error || \"Unknown error\")));
+        this.on("error", function(file, msg) {
+          dz.removeAllFiles();  // <--- Only here!
+          alert("Error: " + (typeof msg === "string" ? msg : (msg.error || "Unknown error")));
         });
       }
     });
+
   </script>
 </body>
 </html>
