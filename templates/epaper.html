@@ -20,15 +20,18 @@
     <h2 class="mb-4" style="text-align:center">13.3" E-paper Controller (RPi Zero)</h2>
     <ul class="nav nav-tabs" id="mainTabs" role="tablist">
       <li class="nav-item">
-        <a class="nav-link {% if tab=='convert' %}active{% endif %}" id="convert-tab" data-bs-toggle="tab" href="#convert" role="tab">Convert & Preview</a>
+        <a class="nav-link {% if tab=='convert' %}active{% endif %}" data-bs-toggle="tab" href="#convert">Convert & Preview</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link {% if tab=='raw' %}active{% endif %}" id="raw-tab" data-bs-toggle="tab" href="#raw" role="tab">Raw Upload (.bin only)</a>
+        <a class="nav-link {% if tab=='raw' %}active{% endif %}" data-bs-toggle="tab" href="#raw">Raw Upload (.bin only)</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link {% if tab=='api' %}active{% endif %}" id="api-tab" data-bs-toggle="tab" href="#api" role="tab">API Info</a>
+        <a class="nav-link {% if tab=='api' %}active{% endif %}" data-bs-toggle="tab" href="#api">API Info</a>
       </li>
       {% if is_admin %}
+      <li class="nav-item">
+        <a class="nav-link {% if tab=='palettes' %}active{% endif %}" data-bs-toggle="tab" href="#palettes">Palettes</a>
+      </li>
       <li class="nav-item ms-auto">
         <a class="nav-link text-danger" href="{{ url_for('admin_logout') }}">Admin logout</a>
       </li>
@@ -37,7 +40,7 @@
         <a class="nav-link" href="{{ url_for('admin_login', next=request.url) }}">Admin login</a>
       </li>
       {% endif %}
-      <li class="nav-item ms-2">
+      <li class="nav-item">
         <a class="nav-link" href="{{ url_for('site_logout') }}">Log out</a>
       </li>
     </ul>
@@ -53,25 +56,6 @@
             <li>That’s it – the software handles all technical details!</li>
           </ul>
         </div>
-        <!-- Palette management (admin only) -->
-        {% if is_admin %}
-        <div class="mb-4">
-          <form method="post" action="{{ url_for('upload_palette') }}" enctype="multipart/form-data" class="d-inline-block">
-            <label for="paletteUpload"><b>Upload new palette (.act):</b></label>
-            <input type="file" name="palette" id="paletteUpload" accept=".act" class="form-control d-inline-block" required style="width:auto;display:inline;">
-            <button type="submit" class="btn btn-secondary btn-sm ms-2">Upload</button>
-          </form>
-          <ul class="list-group mt-2">
-            {% for palette in palettes %}
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-              {{ palette }}
-              <a href="{{ url_for('delete_palette', palette=palette) }}" class="btn btn-danger btn-sm" title="Delete" aria-label="Delete">&times;</a>
-            </li>
-            {% endfor %}
-          </ul>
-        </div>
-        {% endif %}
-        <!-- Palette select (for everyone) -->
         <div class="mb-3">
           <label for="palette"><b>Color palette:</b></label>
           <select name="palette" id="palette" class="form-select" {% if not palettes %}disabled{% endif %}>
@@ -80,10 +64,9 @@
             {% endfor %}
           </select>
           {% if not palettes %}
-            <small class="text-danger">No palette files (.act) found. Please upload at least one.</small>
+            <small class="text-danger">No palette files (.act) found. Please upload at least one (admin only).</small>
           {% endif %}
         </div>
-        <!-- Drag-and-drop upload -->
         <form id="imgDropzone" class="dropzone mb-3" style="border:2px dashed #ddd;">
           <div class="dz-message">Drop image here or click to select</div>
         </form>
@@ -110,7 +93,7 @@
           </div>
         {% endif %}
       </div>
-      <!-- Raw Upload Tab (admin only) -->
+      <!-- Raw Upload Tab -->
       <div class="tab-pane fade {% if tab=='raw' %}show active{% endif %}" id="raw" role="tabpanel">
         <div class="desc">
           <b>Advanced users (Admin only):</b> Upload a raw e-paper buffer file (.bin).<br>
@@ -166,15 +149,42 @@ print(r.json())
           </div>
         </div>
       </div>
+      <!-- Palettes Tab (Admin only) -->
+      {% if is_admin %}
+      <div class="tab-pane fade {% if tab=='palettes' %}show active{% endif %}" id="palettes" role="tabpanel">
+        <div class="desc">
+          <b>Palette management (Admin only):</b>
+          <ul>
+            <li>Upload new color palettes (.act) for your e-paper display.</li>
+            <li>Delete palettes you no longer need.</li>
+          </ul>
+        </div>
+        <div class="mb-4">
+          <form method="post" action="{{ url_for('upload_palette') }}" enctype="multipart/form-data">
+            <label for="paletteUpload"><b>Upload new palette (.act):</b></label>
+            <input type="file" name="palette" id="paletteUpload" accept=".act" class="form-control d-inline-block" required style="width:auto;display:inline;">
+            <button type="submit" class="btn btn-secondary btn-sm ms-2">Upload</button>
+          </form>
+          <ul class="list-group mt-2">
+            {% for palette in palettes %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              {{ palette }}
+              <a href="{{ url_for('delete_palette', palette=palette) }}" class="btn btn-danger btn-sm" title="Delete" aria-label="Delete">&times;</a>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+      {% endif %}
     </div>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dropzone@6.0.0-beta.1/dist/dropzone-min.js"></script>
   <script>
     // Tab persistence
-    document.querySelectorAll('a[data-bs-toggle="tab"]').forEach(tab => {
-      tab.addEventListener("shown.bs.tab", function(e) {
-        let href = e.target.getAttribute("href").replace("#", "");
+    document.querySelectorAll('a[data-bs-toggle=\"tab\"]').forEach(tab => {
+      tab.addEventListener(\"shown.bs.tab\", function(e) {
+        let href = e.target.getAttribute(\"href\").replace(\"#\", \"\");
         let url = new URL(window.location);
         url.searchParams.set('tab', href);
         window.history.replaceState(null, null, url.toString());
@@ -183,27 +193,27 @@ print(r.json())
 
     // Drag-and-drop upload
     Dropzone.autoDiscover = false;
-    let dz = new Dropzone("#imgDropzone", {
-      url: "/upload_image",
-      paramName: "file",
+    let dz = new Dropzone(\"#imgDropzone\", {
+      url: \"/upload_image\",
+      paramName: \"file\",
       maxFiles: 1,
-      acceptedFiles: "image/*",
+      acceptedFiles: \"image/*\",
       addRemoveLinks: false,
-      dictDefaultMessage: "Drop image here or click to select",
+      dictDefaultMessage: \"Drop image here or click to select\",
       init: function() {
-        let paletteSel = document.getElementById("palette");
-        this.on("sending", function(file, xhr, formData) {
+        let paletteSel = document.getElementById(\"palette\");
+        this.on(\"sending\", function(file, xhr, formData) {
           document.getElementById('uploadProgress').style.display = 'block';
-          if (paletteSel) formData.append("palette", paletteSel.value);
+          if (paletteSel) formData.append(\"palette\", paletteSel.value);
         });
-        this.on("uploadprogress", function(file, progress) {
+        this.on(\"uploadprogress\", function(file, progress) {
           document.getElementById('uploadProgress').value = progress;
         });
-        this.on("success", function(file, response) {
-          window.location = window.location.pathname + "?tab=convert";
+        this.on(\"success\", function(file, response) {
+          window.location = window.location.pathname + \"?tab=convert\";
         });
-        this.on("error", function(file, msg) {
-          alert("Error: " + (typeof msg === "string" ? msg : (msg.error || "Unknown error")));
+        this.on(\"error\", function(file, msg) {
+          alert(\"Error: \" + (typeof msg === \"string\" ? msg : (msg.error || \"Unknown error\")));
         });
       }
     });
