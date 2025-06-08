@@ -25,7 +25,7 @@ Easily upload, convert, preview, and display images — with full admin and API 
 2. **Install dependencies** (recommended: virtual environment):
 
    ```bash
-   cd epaper_app
+   cd epaper-rp-controller-13.3-eink-spectra6e
    python3 -m venv venv
    source venv/bin/activate
    pip install -r requirements.txt
