@@ -66,7 +66,7 @@ LOG_FILE = os.path.join(LOG_DIR, "epaper.log")
 logging.basicConfig(filename=LOG_FILE, level=logging.INFO,
     format="%(asctime)s %(levelname)s: %(message)s [%(pathname)s:%(lineno)d]")
 
-libdir = os.path.join(BASE_DIR, '../lib')
+libdir = os.path.join(BASE_DIR, 'lib')
 if os.path.exists(libdir): sys.path.append(libdir)
 try:
     import epd13in3E
